@@ -9,15 +9,35 @@ import { KitchenItem } from "../entities/KitchenItem";
 const isProduction = process.env.NODE_ENV === "production";
 const isDevelopment = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
 
-// Database configuration based on environment
-const databaseConfig = {
-  type: "postgres" as const,
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT) || 5432,
-  username: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  
+// Parse DATABASE_URL if provided (used by Render and other cloud platforms)
+let databaseConfig: any = {};
+
+if (process.env.DATABASE_URL) {
+  // Parse DATABASE_URL (format: postgres://user:password@host:port/database)
+  const url = new URL(process.env.DATABASE_URL);
+  databaseConfig = {
+    type: "postgres" as const,
+    host: url.hostname,
+    port: parseInt(url.port) || 5432,
+    username: url.username,
+    password: url.password,
+    database: url.pathname.slice(1), // Remove leading '/'
+  };
+} else {
+  // Fall back to individual environment variables (for local development)
+  databaseConfig = {
+    type: "postgres" as const,
+    host: process.env.DB_HOST || "localhost",
+    port: Number(process.env.DB_PORT) || 5432,
+    username: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+  };
+}
+
+// Add common configuration
+databaseConfig = {
+  ...databaseConfig,
   // Entities
   entities: [Level, KitchenCategory, Admin, KitchenItem],
   
@@ -27,9 +47,12 @@ const databaseConfig = {
   
   // Production settings
   ...(isProduction && {
-    ssl: process.env.DB_SSL === "true" ? {
+    // Render and most cloud providers require SSL
+    ssl: process.env.DATABASE_URL ? {
+      rejectUnauthorized: false // Render uses self-signed certificates
+    } : (process.env.DB_SSL === "true" ? {
       rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false"
-    } : false,
+    } : false),
     extra: {
       max: 20, // Maximum number of connections in the pool
       connectionTimeoutMillis: 2000,
