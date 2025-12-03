@@ -22,6 +22,11 @@ app.use(cors({
 
 app.use(express.json());
 
+// Health check endpoint for Render
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // Routes
 app.use("/api/items", itemRoutes);
 app.use("/api/levels", levelRoutes);

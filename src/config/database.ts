@@ -9,12 +9,14 @@ import { KitchenItem } from "../entities/KitchenItem";
 const isProduction = process.env.NODE_ENV === "production";
 const isDevelopment = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
 
-// Parse DATABASE_URL if provided (used by Render and other cloud platforms)
+// Parse DB_URL or DATABASE_URL if provided (used by Render and other cloud platforms)
+// Render uses DB_URL, but we support both for compatibility
+const connectionString = process.env.DB_URL || process.env.DATABASE_URL;
 let databaseConfig: any = {};
 
-if (process.env.DATABASE_URL) {
-  // Parse DATABASE_URL (format: postgres://user:password@host:port/database)
-  const url = new URL(process.env.DATABASE_URL);
+if (connectionString) {
+  // Parse connection string (format: postgres://user:password@host:port/database)
+  const url = new URL(connectionString);
   databaseConfig = {
     type: "postgres" as const,
     host: url.hostname,
@@ -45,14 +47,16 @@ databaseConfig = {
   synchronize: isDevelopment ? true : false, // NEVER true in production!
   logging: isDevelopment ? true : false,
   
+  // SSL configuration for Render and cloud providers
+  // Render PostgreSQL requires SSL, so enable it when using connection string
+  ssl: connectionString ? {
+    rejectUnauthorized: false // Render uses self-signed certificates
+  } : (process.env.DB_SSL === "true" ? {
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false"
+  } : false),
+  
   // Production settings
   ...(isProduction && {
-    // Render and most cloud providers require SSL
-    ssl: process.env.DATABASE_URL ? {
-      rejectUnauthorized: false // Render uses self-signed certificates
-    } : (process.env.DB_SSL === "true" ? {
-      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false"
-    } : false),
     extra: {
       max: 20, // Maximum number of connections in the pool
       connectionTimeoutMillis: 2000,
