@@ -9,6 +9,7 @@
     "build": "tsc",
     "start:prod": "node dist/server.js",
     "migration:run": "npx typeorm migration:run -d dist/config/database.js",
+    "migration:run-script": "ts-node src/scripts/run-migrations.ts",
     "postdeploy": "npm run migration:run"
   },
   "keywords": [],

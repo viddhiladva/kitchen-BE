@@ -33,10 +33,31 @@ app.use("/api/levels", levelRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/admins", adminRoutes);
 
-// Initialize Database
+// Initialize Database and run migrations
 AppDataSource.initialize()
-  .then(() => {
+  .then(async () => {
     console.log("Database connected!");
+    
+    // Run migrations in production (Render deployment)
+    // Check if we're in production (Render sets PORT, or NODE_ENV=production)
+    const isProduction = process.env.NODE_ENV === "production" || process.env.PORT;
+    if (isProduction && !process.env.SKIP_MIGRATIONS) {
+      try {
+        console.log("Running migrations...");
+        const migrations = await AppDataSource.runMigrations();
+        if (migrations.length > 0) {
+          console.log(`Successfully ran ${migrations.length} migration(s)`);
+          migrations.forEach((m) => console.log(`  - ${m.name}`));
+        } else {
+          console.log("No pending migrations.");
+        }
+      } catch (migrationError) {
+        console.error("Migration error:", migrationError);
+        // Don't exit - allow server to start even if migrations fail
+        // This prevents deployment failures if migrations were already run
+      }
+    }
+    
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((err) => console.error("DB connection error:", err));
