@@ -43,6 +43,10 @@ databaseConfig = {
   // Entities
   entities: [Level, KitchenCategory, Admin, KitchenItem],
   
+  // Migrations configuration
+  migrations: ["dist/migrations/**/*.js"],
+  migrationsTableName: "migrations",
+  
   // Development settings
   synchronize: isDevelopment ? true : false, // NEVER true in production!
   logging: isDevelopment ? true : false,
